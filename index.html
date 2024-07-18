@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rompecabezas de Palabras</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .image-container {
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 { 
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .grid {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .input-grid { 
+            grid-template-columns: repeat(7, 1fr);
+        }
+        .puzzle-grid { 
+            grid-template-columns: repeat(9, 1fr);
+        }
+        .cell {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #fff;
+            color: #000;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .input-cell {
+            border: 2px solid transparent;
+        }
+        .puzzle-cell {
+            transition: transform 0.2s;
+        }
+        .puzzle-cell:hover { transform: scale(1.1); }
+        .correct { background-color: green; color: #fff; }
+        .incorrect { background-color: red; color: #fff; }
+        .message {
+            margin-top: 20px;
+            font-size: 20px;
+            color: yellow;
+        }
+        .button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #f00;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+        .next-button {
+            background-color: #00f;
+            display: none;
+        }
+        .progress {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .cell {
+                font-size: 14px;
+            }
+            .message {
+                font-size: 16px;
+            }
+            .button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+    <div class="image-container">
+        <img id="wordImage" alt="Imagen de la palabra" />
+    </div>
+    <div class="container">
+        <h1>Adivina la palabra</h1>
+        <div id="inputGrid" class="grid input-grid"></div>
+        <div id="puzzleGrid" class="grid puzzle-grid"></div>
+        <button class="button" onclick="clearInput()">Borrar</button>
+        <button id="nextButton" class="button next-button" onclick="nextWord()">Siguiente</button>
+        <div id="message" class="message"></div>
+        <div id="progress" class="progress"></div>
+    </div>
+    <script>
+        const words = ['MASCOTA', 'PELOTA', 'COMIDA', 'PARQUE', 'JUGUETE'];
+        const images = [
+            'mascota.jpg',
+            'pelotajpg.jpg',
+            'comida.png',
+            'parque.avif',
+            'juguete.webp'
+        ];
+        let currentWordIndex = 0;
+        let currentWord = '';
+        let completedWords = [];
+        const inputGrid = document.getElementById('inputGrid');
+        const puzzleGrid = document.getElementById('puzzleGrid');
+        const messageEl = document.getElementById('message');
+        const nextButton = document.getElementById('nextButton');
+        const wordImage = document.getElementById('wordImage');
+        const progressEl = document.getElementById('progress');
+
+        function createGrid(parent, className, count, onClick) {
+            for (let i = 0; i < count; i++) {
+                const cell = document.createElement('div');
+                cell.className = `cell ${className}`;
+                cell.onclick = onClick;
+                parent.appendChild(cell);
+            }
+        }
+
+        function selectLetter(e) {
+            const selectedLetter = e.target.textContent;
+            const emptyCell = Array.from(inputGrid.children).find(cell => cell.textContent === '');
+            if (emptyCell) {
+                emptyCell.textContent = selectedLetter;
+                currentWord += selectedLetter;
+                checkWord();
+            }
+        }
+
+        function checkWord() {
+            const correctWord = words[currentWordIndex];
+            Array.from(inputGrid.children).forEach((cell, i) => {
+                cell.classList.toggle('correct', correctWord[i] === currentWord[i]);
+                cell.classList.toggle('incorrect', correctWord[i] !== currentWord[i] && cell.textContent !== '');
+            });
+            if (currentWord === correctWord) {
+                messageEl.textContent = '¡Correcto!';
+                nextButton.style.display = 'inline-block';
+                if (!completedWords.includes(currentWordIndex)) {
+                    completedWords.push(currentWordIndex);
+                    saveProgress();
+                }
+                updateProgress();
+            } else {
+                messageEl.textContent = '';
+                nextButton.style.display = 'none';
+            }
+        }
+
+        function clearInput() {
+            Array.from(inputGrid.children).forEach(cell => {
+                cell.textContent = '';
+                cell.className = 'cell input-cell';
+            });
+            currentWord = '';
+            messageEl.textContent = '';
+            nextButton.style.display = 'none';
+        }
+
+        function nextWord() {
+            do {
+                currentWordIndex = (currentWordIndex + 1) % words.length;
+            } while (completedWords.length < words.length && completedWords.includes(currentWordIndex));
+            
+            clearInput();
+            setupWord();
+            saveProgress();
+        }
+
+        function setupWord() {
+            const word = words[currentWordIndex];
+            inputGrid.innerHTML = '';
+            createGrid(inputGrid, 'input-cell', word.length);
+            wordImage.src = images[currentWordIndex];
+            wordImage.alt = `Imagen para la palabra: ${word}`;
+            updateProgress();
+        }
+
+        function initializePuzzle() {
+            loadProgress();
+            setupWord();
+            puzzleGrid.innerHTML = '';
+            createGrid(puzzleGrid, 'puzzle-cell', 27, selectLetter);
+            
+            const letters = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
+            Array.from(puzzleGrid.children).forEach((cell, i) => {
+                cell.textContent = letters[i];
+            });
+        }
+
+        function saveProgress() {
+            localStorage.setItem('wordPuzzleProgress', JSON.stringify({
+                currentWordIndex,
+                completedWords
+            }));
+        }
+
+        function loadProgress() {
+            const savedProgress = localStorage.getItem('wordPuzzleProgress');
+            if (savedProgress) {
+                const { currentWordIndex: savedIndex, completedWords: savedCompleted } = JSON.parse(savedProgress);
+                currentWordIndex = savedIndex;
+                completedWords = savedCompleted;
+            }
+        }
+
+        function updateProgress() {
+            progressEl.textContent = `Progreso: ${completedWords.length} / ${words.length}`;
+        }
+
+        initializePuzzle();
+    </script>
+</body>
+</html>
